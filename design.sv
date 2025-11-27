@@ -9,21 +9,21 @@ module pipe_MIPS32 (clk1, clk2);
     reg EX_MEM_cond;
     reg [31:0] MEM_WB_IR, MEM_WB_ALUout, MEM_WB_LMD;
     
-    reg [31:0] Reg [0:31];                                                                              // 32 x 32 Register Bank
-    reg [31:0] Mem [0:1023];                                                                            // 1024 x 32 Memory
+    reg [31:0] Reg [0:31];                                                                             
+    reg [31:0] Mem [0:1023];                                                                            
 
-    parameter ADD=6'b000000, SUB=6'b000001, AND=6'b000010,                                              // \
-    OR=6'b000011, SLT=6'b000100, MUL=6'b000101,                                                         // |
-    HLT=6'b111111, LW=6'b001000, SW=6'b001001,                                                          // | Op-Codes 
-    ADDI=6'b001010, SUBI=6'b001011, SLTI=6'b001100,                                                     // |
-    BNEQZ=6'b001101, BEQZ=6'b001110;                                                                    // /
+    parameter ADD=6'b000000, SUB=6'b000001, AND=6'b000010,                                              
+    OR=6'b000011, SLT=6'b000100, MUL=6'b000101,                                                         
+    HLT=6'b111111, LW=6'b001000, SW=6'b001001,                                                          //  Op-Codes 
+    ADDI=6'b001010, SUBI=6'b001011, SLTI=6'b001100,                                                     
+    BNEQZ=6'b001101, BEQZ=6'b001110;                                                                    
+    
+    parameter RR_ALU=3'b000, RM_ALU=3'b001,                                                             
+    LOAD=3'b010, STORE=3'b011,                                                                           //Types
+    BRANCH=3'b100, HALT=3'b101;                                                                         
 
-    parameter RR_ALU=3'b000, RM_ALU=3'b001,                                                             // \
-    LOAD=3'b010, STORE=3'b011,                                                                          // | Types
-    BRANCH=3'b100, HALT=3'b101;                                                                         // /
-
-    reg HALTED;                                                                                         // Set HLT after instruction is completed in write-back (WB) stage
-    reg TAKEN_BRANCH;                                                                                   // To disable instructions after a branch
+    reg HALTED;                                                                                         
+    reg TAKEN_BRANCH;                                                                                   
 
     always @(posedge clk1)                                                                              // Instruction Fetch (IF) Stage
         if (HALTED == 0)
@@ -31,16 +31,16 @@ module pipe_MIPS32 (clk1, clk2);
             if (((EX_MEM_IR[31:26]== BEQZ) && (EX_MEM_cond == 1))||                                     // Checking for Branching
             ((EX_MEM_IR[31:26] == BNEQZ) && (EX_MEM_cond == 0)))
                 begin
-                    IF_ID_IR        <= #2 Mem[EX_MEM_ALUout];                                           // \
-                    TAKEN_BRANCH    <= #2 1'b1;                                                         // | Branch is Taken
-                    IF_ID_NPC       <= #2 EX_MEM_ALUout + 1;                                            // | Program Counter updated with the branch instruction 
-                    PC              <= #2 EX_MEM_ALUout + 1;                                            // /
+                    IF_ID_IR        <= #2 Mem[EX_MEM_ALUout];                                           
+                    TAKEN_BRANCH    <= #2 1'b1;                                                         //  Branch is Taken
+                    IF_ID_NPC       <= #2 EX_MEM_ALUout + 1;                                            
+                    PC              <= #2 EX_MEM_ALUout + 1;                                            
                 end
             else
                 begin
-                    IF_ID_IR        <= #2 Mem[PC];                                                      // \
-                    IF_ID_NPC       <= #2 PC +1;                                                        // | Branch not Taken, normal updation of Program Counter
-                    PC              <= #2 PC +1;                                                        // /
+                    IF_ID_IR        <= #2 Mem[PC];                                                      
+                    IF_ID_NPC       <= #2 PC +1;                                                        //  Branch not Taken, normal updation of Program Counter
+                    PC              <= #2 PC +1;                                                        
                 end
         end
 
@@ -57,18 +57,18 @@ module pipe_MIPS32 (clk1, clk2);
             else
                 ID_EX_B             <= #2 Reg[IF_ID_IR[20:16]];                                         // "rt"
 
-            ID_EX_NPC               <= #2 IF_ID_NPC;                                                    // Transferring to next stage
-            ID_EX_IR                <= #2 IF_ID_IR;                                                     // Transferring to next stage
+            ID_EX_NPC               <= #2 IF_ID_NPC;                                                  
+            ID_EX_IR                <= #2 IF_ID_IR;                                                     
             ID_EX_Imm               <= #2 {{16{IF_ID_IR[15]}}, {IF_ID_IR[15:0]}};                       // Sign Extension to 32 bits
 
             case (IF_ID_IR[31:26])
-                ADD, SUB, AND, OR, SLT, MUL: ID_EX_type <= #2 RR_ALU;                                   // \
-                ADDI, SUBI, SLTI:            ID_EX_type <= #2 RM_ALU;                                   // |
-                LW:                          ID_EX_type <= #2 LOAD;                                     // |
-                SW:                          ID_EX_type <= #2 STORE;                                    // | Checking the Op-Code type for invalids
-                BNEQZ, BEQZ:                 ID_EX_type <= #2 BRANCH;                                   // |
-                HLT:                         ID_EX_type <= #2 HALT;                                     // |
-                default:                     ID_EX_type <= #2 HALT;                                     // /
+                ADD, SUB, AND, OR, SLT, MUL: ID_EX_type <= #2 RR_ALU;                                   
+                ADDI, SUBI, SLTI:            ID_EX_type <= #2 RM_ALU;                                  
+                LW:                          ID_EX_type <= #2 LOAD;                                     
+                SW:                          ID_EX_type <= #2 STORE;                                    //  Checking the Op-Code type for invalids
+                BNEQZ, BEQZ:                 ID_EX_type <= #2 BRANCH;                                   
+                HLT:                         ID_EX_type <= #2 HALT;                                   
+                default:                     ID_EX_type <= #2 HALT;                                    
             endcase 
         end
 
@@ -141,9 +141,10 @@ module pipe_MIPS32 (clk1, clk2);
 
                     RM_ALU:     Reg[MEM_WB_IR[20:16]]   <= #2 MEM_WB_ALUout;                           // "rt"
 
-                    LOAD:       Reg[MEM_WB_IR[20:16]]   <= #2 MEM_WB_LMD;                              // "rt"
+                    LOAD:       Reg[MEM_WB_IR[20:16]]   <= #2 MEM_WB_LMD;                              // "rs"
 
                     HALT:       HALTED                  <= #2 1'b1;     
                 endcase
         end                      
+
 endmodule 
